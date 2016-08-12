@@ -1,6 +1,4 @@
-// ShellViewSample.cpp : ƒRƒ“ƒ\[ƒ‹ ƒAƒvƒŠƒP[ƒVƒ‡ƒ“‚ÌƒGƒ“ƒgƒŠ ƒ|ƒCƒ“ƒg‚ğ’è‹`‚µ‚Ü‚·B
-//
-
+ï»¿
 #include "targetver.h"
 
 #include <memory>
@@ -229,7 +227,7 @@ void main(int argc, WCHAR *argv[])
 #ifndef TEST
 	if (argc < 2)
 	{
-		::MessageBox(nullptr, L"Shell:Sendto ‚ÉƒVƒ‡[ƒgƒJƒbƒg‚ğ“o˜^‚µ‚Ä‚­‚¾‚³‚¢B", argv[0], MB_OK | MB_ICONINFORMATION);
+		::MessageBox(nullptr, L"Shell:Sendto ã«ã‚·ãƒ§ãƒ¼ãƒˆã‚«ãƒƒãƒˆã‚’ç™»éŒ²ã—ã¦ãã ã•ã„ã€‚", argv[0], MB_OK | MB_ICONINFORMATION);
 		return;
 	}
 #endif
@@ -243,7 +241,7 @@ void main(int argc, WCHAR *argv[])
 	auto pShellBrowser = GetForegroundShellBrowser();
 	if (!pShellBrowser)
 	{
-		::MessageBox(nullptr, L"ƒGƒNƒXƒvƒ[ƒ‰[‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñ‚Å‚µ‚½B", argv[0], MB_OK | MB_ICONEXCLAMATION);
+		::MessageBox(nullptr, L"ã‚¨ã‚¯ã‚¹ãƒ—ãƒ­ãƒ¼ãƒ©ãƒ¼ãŒè¦‹ã¤ã‹ã‚Šã¾ã›ã‚“ã§ã—ãŸã€‚", argv[0], MB_OK | MB_ICONEXCLAMATION);
 		return;
 	}
 
