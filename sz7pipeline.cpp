@@ -25,7 +25,6 @@
 #include <comdef.h>
 #include <Propkey.h>
 
-_COM_SMARTPTR_TYPEDEF(IFolderView, __uuidof(IFolderView));
 _COM_SMARTPTR_TYPEDEF(IFolderView2, __uuidof(IFolderView2));
 _COM_SMARTPTR_TYPEDEF(IShellItemArray, __uuidof(IShellItemArray));
 _COM_SMARTPTR_TYPEDEF(IShellItem, __uuidof(IShellItem));
@@ -44,7 +43,7 @@ _COM_SMARTPTR_TYPEDEF(IShellItem, __uuidof(IShellItem));
 #define TEST 1
 #endif
 
-inline std::wstring GuidToString(const GUID *pGuid)
+inline std::wstring guidToString(const GUID *pGuid)
 {
 	std::wstring wrk;
 	RPC_WSTR waString = nullptr;
@@ -114,7 +113,7 @@ inline void checkWin32(BOOL success)
 	}
 }
 
-inline VARIANT CVar(int iVal)
+inline VARIANT cvar(int iVal)
 {
 	VARIANT v;
 	v.vt = VT_I4;
@@ -123,7 +122,7 @@ inline VARIANT CVar(int iVal)
 	return v;
 }
 
-IShellBrowserPtr GetForegroundShellBrowser()
+IShellBrowserPtr getForegroundShellBrowser()
 {
 	auto hWndFg = ::GetAncestor(::GetForegroundWindow(), GA_ROOT);
 	if (hWndFg == nullptr)
@@ -139,7 +138,7 @@ IShellBrowserPtr GetForegroundShellBrowser()
 	{
 		IDispatchPtr pDispatch;
 
-		check(pShellWindows->Item(CVar(i), &pDispatch));
+		check(pShellWindows->Item(cvar(i), &pDispatch));
 		{
 			IShellBrowserPtr pShellBrowser;
 			check(IUnknown_QueryService(pDispatch, SID_STopLevelBrowser, IID_PPV_ARGS(&pShellBrowser)));
@@ -161,9 +160,9 @@ IShellBrowserPtr GetForegroundShellBrowser()
 
 
 #ifdef NDEBUG
-#define DebugPrint __noop
+#define debugPrint __noop
 #else
-void DebugPrint(const TCHAR *fmt, ...)
+void debugPrint(const TCHAR *fmt, ...)
 {
 	TCHAR buf[512];
 	va_list args;
@@ -188,7 +187,7 @@ class Config
 {
 	static std::wstring getString(LPCWSTR iniFile, LPCWSTR appName, LPCWSTR key, LPCWSTR default = L"")
 	{
-		size_t cap = 256;
+		DWORD cap = 256;
 		auto str = std::make_unique<wchar_t[]>(cap);
 		do
 		{
@@ -238,7 +237,7 @@ void main(int argc, WCHAR *argv[])
 
 	const Config config(iniFile);
 	using namespace std;
-	auto pShellBrowser = GetForegroundShellBrowser();
+	auto pShellBrowser = getForegroundShellBrowser();
 	if (!pShellBrowser)
 	{
 		::MessageBox(nullptr, L"エクスプローラーが見つかりませんでした。", argv[0], MB_OK | MB_ICONEXCLAMATION);
@@ -255,10 +254,26 @@ void main(int argc, WCHAR *argv[])
 	HRESULT hr = pFolderView->GetFolder(IID_PPV_ARGS(&pShellFolder));
 	if (SUCCEEDED(hr))
 	{
-		int selectCount;
-		check(pFolderView->ItemCount(SVGIO_SELECTION, &selectCount));
+		WCHAR dir[MAX_PATH] = L"";
+		checkWin32(::ExpandEnvironmentStrings(config.m_workDir.c_str(), dir, _countof(dir)));
 
-		UINT flag = (selectCount > 1) ? SVGIO_SELECTION : SVGIO_ALLVIEW;
+		WCHAR fname[MAX_PATH];
+
+		if (config.m_filename.length() == 0)
+		{
+			::PathCombine(fname, dir, L"XXXXXX");
+			_wmktemp_s(fname, _countof(dir));
+			wcscat_s(fname, L".sz7");
+		}
+		else
+		{
+			::PathCombine(fname, dir, config.m_filename.c_str());
+		}
+
+		int selectionCount;
+		check(pFolderView->ItemCount(SVGIO_SELECTION, &selectionCount));
+
+		UINT flag = (selectionCount > 1) ? SVGIO_SELECTION : SVGIO_ALLVIEW;
 
 		IShellItemArrayPtr pShellItemArray;
 		check(pFolderView->Items(flag | SVGIO_FLAG_VIEWORDER, IID_PPV_ARGS(&pShellItemArray)));
@@ -274,27 +289,9 @@ void main(int argc, WCHAR *argv[])
 		{
 			IShellItemPtr pShellItem;
 			check(pShellItemArray->GetItemAt(dwIdx, &pShellItem));
-			{
-				LPWSTR pszName = NULL;
-				check(pShellItem->GetDisplayName(SIGDN_FILESYSPATH, &pszName));
-				list.emplace_back(ComHeapString(pszName));
-			}
-		}
-
-		WCHAR dir[MAX_PATH] = L"";
-		checkWin32(::ExpandEnvironmentStrings(config.m_workDir.c_str(), dir, _countof(dir)));
-
-		WCHAR fname[MAX_PATH];
-
-		if (config.m_filename.length() == 0)
-		{
-			::PathCombine(fname, dir, L"XXXXXX");
-			_wmktemp_s(fname, _countof(dir));
-			wcscat_s(fname, L".sz7");
-		}
-		else
-		{
-			::PathCombine(fname, dir, config.m_filename.c_str());
+			LPWSTR pszName = NULL;
+			check(pShellItem->GetDisplayName(SIGDN_FILESYSPATH, &pszName));
+			list.emplace_back(ComHeapString(pszName));
 		}
 
 		FILE* fp = nullptr;
@@ -318,7 +315,7 @@ void main(int argc, WCHAR *argv[])
 					checkWin32(::GetShortPathName(path, shortPath, _countof(shortPath)));
 					path = shortPath;
 				}
-				DebugPrint(L"%s\n", path);
+				debugPrint(L"%s\n", path);
 				fprintf_s(fp, "%S\n", path);
 			});
 		}
@@ -336,6 +333,17 @@ void main(int argc, WCHAR *argv[])
 	}
 }
 
+std::wstring str2wstr(LPCSTR source, size_t size = _TRUNCATE, bool throwIfError = false)
+{
+	WCHAR buf[256];
+	size_t conv;
+	auto result = mbstowcs_s(&conv, buf, source, size);
+	if(throwIfError && result != 0)
+		throw std::system_error(result, std::system_category());
+
+	return std::wstring{ buf, conv };
+}
+
 int APIENTRY _tWinMain(HINSTANCE,
 	HINSTANCE,
 	LPTSTR /*lpCmdLine*/,
@@ -346,7 +354,6 @@ int APIENTRY _tWinMain(HINSTANCE,
 
 	LPWSTR *szArglist;
 	int nArgs;
-
 	szArglist = ::CommandLineToArgvW(::GetCommandLineW(), &nArgs);
 
 	try
@@ -360,9 +367,8 @@ int APIENTRY _tWinMain(HINSTANCE,
 	}
 	catch (const std::system_error& err)
 	{
-		wchar_t msg[256];
-		swprintf_s(msg, L"%S", err.what());
-		::MessageBox(nullptr, msg, szArglist[0], MB_OK | MB_ICONERROR);
+		auto msg = str2wstr(err.what());
+		::MessageBox(nullptr, msg.c_str(), szArglist[0], MB_OK | MB_ICONERROR);
 	}
 
 	return 0;
