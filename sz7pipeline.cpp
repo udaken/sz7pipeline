@@ -13,7 +13,7 @@
 #define STRICT
 #define STRICT_CONST
 #define STRICT_TYPED_ITEMIDS
-
+#define NOOPENFILE
 #define NOMINMAX
 
 #include <Windows.h>
@@ -40,7 +40,7 @@ _COM_SMARTPTR_TYPEDEF(IShellItem, __uuidof(IShellItem));
 #include "cpplinq.hpp"
 
 #ifdef _DEBUG
-#define TEST 1
+#define SZ7PP_TEST 1
 #endif
 
 inline std::wstring guidToString(const GUID *pGuid)
@@ -51,7 +51,10 @@ inline std::wstring guidToString(const GUID *pGuid)
 	if (RPC_S_OK == ::UuidToString(pGuid, &waString))
 	{
 		wrk = reinterpret_cast<const WCHAR*>(waString);
-		::RpcStringFree(&waString);
+		if (RPC_S_OK != ::RpcStringFree(&waString))
+		{
+			assert(0);
+		}
 	}
 	return std::move(wrk);
 }
@@ -113,7 +116,7 @@ inline void checkWin32(BOOL success)
 	}
 }
 
-inline VARIANT cvar(int iVal)
+inline VARIANT ToVariant(int iVal)
 {
 	VARIANT v;
 	v.vt = VT_I4;
@@ -138,14 +141,14 @@ IShellBrowserPtr getForegroundShellBrowser()
 	{
 		IDispatchPtr pDispatch;
 
-		check(pShellWindows->Item(cvar(i), &pDispatch));
+		check(pShellWindows->Item(ToVariant(i), &pDispatch));
 		{
 			IShellBrowserPtr pShellBrowser;
 			check(IUnknown_QueryService(pDispatch, SID_STopLevelBrowser, IID_PPV_ARGS(&pShellBrowser)));
 
 			HWND hwnd;
 			check(IUnknown_GetWindow(pShellBrowser, &hwnd));
-#if TEST
+#if SZ7PP_TEST
 			return pShellBrowser;
 #else
 			if (::GetAncestor(hwnd, GA_ROOT) == hWndFg)
@@ -177,7 +180,7 @@ void debugPrint(const TCHAR *fmt, ...)
 
 bool canConvert(LPCWSTR str)
 {
-	BOOL UsedDefaultChar;
+	BOOL UsedDefaultChar = FALSE;
 	checkWin32(::WideCharToMultiByte(CP_THREAD_ACP, WC_NO_BEST_FIT_CHARS, str, -1, NULL, 0, NULL, &UsedDefaultChar));
 
 	return !UsedDefaultChar;
@@ -223,7 +226,7 @@ public:
 
 void main(int argc, WCHAR *argv[])
 {
-#ifndef TEST
+#ifndef SZ7PP_TEST
 	if (argc < 2)
 	{
 		::MessageBox(nullptr, L"Shell:Sendto にショートカットを登録してください。", argv[0], MB_OK | MB_ICONINFORMATION);
@@ -300,6 +303,7 @@ void main(int argc, WCHAR *argv[])
 		{
 			throw std::system_error(err, std::system_category());
 		}
+
 		{
 			using namespace cpplinq;
 			from(list)
@@ -338,8 +342,10 @@ std::wstring str2wstr(LPCSTR source, size_t size = _TRUNCATE, bool throwIfError 
 	WCHAR buf[256];
 	size_t conv;
 	auto result = mbstowcs_s(&conv, buf, source, size);
-	if(throwIfError && result != 0)
+	if (throwIfError && result != 0)
+	{
 		throw std::system_error(result, std::system_category());
+	}
 
 	return std::wstring{ buf, conv };
 }
@@ -350,7 +356,7 @@ int APIENTRY _tWinMain(HINSTANCE,
 	int /*nCmdShow*/)
 {
 	std::locale::global(std::locale("", LC_CTYPE));
-	_tsetlocale(LC_ALL, _T(""));
+	_tsetlocale(LC_CTYPE, _T(""));
 
 	LPWSTR *szArglist;
 	int nArgs;
