@@ -3,6 +3,8 @@
 
 #include <memory>
 #include <vector>
+#include <fstream>
+#include <codecvt>
 
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
@@ -224,6 +226,15 @@ public:
 };
 
 
+std::wofstream openText(LPCWSTR path)
+{
+	std::wofstream stream;
+	stream.open(path, std::ios::out);
+	stream.exceptions(std::ios::badbit | std::ios::eofbit | std::ios::failbit);
+	stream.imbue(std::locale(std::locale(""), new std::codecvt_utf8_utf16<wchar_t, 0x10ffff, std::generate_header>()));
+	return stream;
+}
+
 void main(int argc, WCHAR *argv[])
 {
 #ifndef SZ7PP_TEST
@@ -297,14 +308,8 @@ void main(int argc, WCHAR *argv[])
 			list.emplace_back(ComHeapString(pszName));
 		}
 
-		FILE* fp = nullptr;
-		auto err = _wfopen_s(&fp, fname, L"w+");
-		if (err)
 		{
-			throw std::system_error(err, std::system_category());
-		}
-
-		{
+			auto stream = openText(fname);
 			using namespace cpplinq;
 			from(list)
 				>> where([&](const auto &i) { return ::PathMatchSpec(i.get(), config.m_pattern.c_str()); })
@@ -320,14 +325,11 @@ void main(int argc, WCHAR *argv[])
 					path = shortPath;
 				}
 				debugPrint(L"%s\n", path);
-				fprintf_s(fp, "%S\n", path);
+				stream << path << std::endl;
 			});
+			stream.close();
 		}
 
-		if (fclose(fp))
-		{
-			throw std::system_error(errno, std::system_category());
-		}
 
 		SHELLEXECUTEINFO sei = { sizeof(sei), };
 		sei.lpVerb = L"open";
