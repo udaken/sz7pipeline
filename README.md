@@ -8,8 +8,9 @@ axpathlist.spi(http://artisticimitation.web.fc2.com/adbtest/test.html) とSusie 
 作成したファイルを関連付けられたアプリケーションで開きます。(その為、拡張子sz7にアプリケーションを登録しておく必要があります。)
 
 ## インストール
-1. zipファイルを、適当なフォルダに展開してください。
-2. エクスプローラーで `shell:sendto` を開き、 `sz7pipeline.exe` へのショートカットを作成してください。
+1. https://github.com/udaken/sz7pipeline/releases からダウンロードしてください。
+2. zipファイルを、適当なフォルダに展開してください。
+3. エクスプローラーで `shell:sendto` を開き、 `sz7pipeline.exe` へのショートカットを作成してください。
 
 ## 使用方法
 エクスプローラーでSusie Plugin対応アプリで開きたいフォルダの中の任意のファイルを選択し、 `送る` から `sz7pipeline.exe へのショートカット` を選択してください。 
